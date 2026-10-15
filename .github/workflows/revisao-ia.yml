@@ -1,22 +1,11 @@
 
-
-      - name: Instala Copilot CLI
-        run: npm install -g @github/copilot
-
-      - name: Revisão por IA
-        id: ia
-        uses: actions/ai-inference@v1
-        env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
-        with:
-          prompt-file: prompt.txt
-          model: gpt-4.1
-          system-prompt: Você é um revisor de código objetivo. Responda em português.
-
+name: revisao-ia
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types:
+      - opened
+      - synchronize
 
 permissions:
   contents: read
@@ -25,19 +14,22 @@ permissions:
 jobs:
   revisar:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
+      - name: Baixa o código
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Instala Copilot CLI
+        run: npm install -g @github/copilot
 
       - name: Monta o prompt
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
           {
-            echo "Revise o diff de um site com Cloudflare Pages Functions e D1."
-            echo "Aponte, em português e em até 10 itens, problemas de segurança e lógica."
+            echo "Revise o código deste Pull Request."
+            echo "Aponte problemas de segurança e lógica em português."
             echo '```diff'
             git diff "origin/${BASE_REF}...HEAD" | head -c 20000
             echo '```'
@@ -50,11 +42,11 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         with:
           prompt-file: prompt.txt
-          system-prompt: Você é um revisor de código objetivo. Responda em português.
+          system-prompt: "Você é um revisor de código objetivo. Responda em português."
 
       - name: Comenta no PR
         env:
           GH_TOKEN: ${{ github.token }}
+          RESPOSTA_IA: ${{ steps.ia.outputs.response }}
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" \
-            --body-file "${{ steps.ia.outputs.response-file }}"
+          gh pr comment "${{ github.event.pull_request.number }}" --body "$RESPOSTA_IA"
