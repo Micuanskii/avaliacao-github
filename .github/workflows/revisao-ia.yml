@@ -3,23 +3,26 @@ name: revisao-ia
 
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
+    types: [opened, synchronize]
 
 permissions:
   contents: read
   pull-requests: write
-  copilot-requests: write
 
 jobs:
   revisar:
     runs-on: ubuntu-latest
+
     steps:
       - name: Baixa o código
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Instala Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Instala Copilot CLI
         run: npm install -g @github/copilot
@@ -30,24 +33,25 @@ jobs:
         run: |
           {
             echo "Revise o código deste Pull Request."
-            echo "Aponte problemas de segurança e lógica em português."
+            echo "Identifique problemas de segurança, erros de lógica e possíveis segredos expostos."
+            echo "Responda em português, com até 10 itens."
             echo '```diff'
             git diff "origin/${BASE_REF}...HEAD" | head -c 20000
             echo '```'
           } > prompt.txt
 
       - name: Revisão por IA
-        id: ia
-        uses: actions/ai-inference@v1
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
-        with:
-          prompt-file: prompt.txt
-          system-prompt: "Você é um revisor de código objetivo. Responda em português."
+        run: |
+          copilot -p "$(cat prompt.txt)" \
+            --model gpt-4.1 \
+            -s \
+            --no-ask-user > resposta.txt
 
       - name: Comenta no PR
         env:
           GH_TOKEN: ${{ github.token }}
-          RESPOSTA_IA: ${{ steps.ia.outputs.response }}
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" --body "$RESPOSTA_IA"
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body-file resposta.txt
