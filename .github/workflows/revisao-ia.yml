@@ -45,7 +45,7 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         run: |
           copilot -p "$(cat prompt.txt)" \
-            --model auto  \ \
+            --model auto \
             -s \
             --no-ask-user > resposta.txt
 
