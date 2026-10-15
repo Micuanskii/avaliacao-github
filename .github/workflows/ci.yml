@@ -15,7 +15,7 @@ jobs:
 
       - name: Procura segredos versionados
         run: |
-          if git grep -nE "GOCSPX-|client_secret *= *['\"][^'\"]+" -- . ':!*.md'; then
+          if git grep -nE 'GOCSPX-|client_secret[[:space:]]*=' -- . ':!.github/workflows/ci.yml' ':!*.md'; then
             echo "::error::Possível segredo no repositório"
             exit 1
           fi
@@ -26,9 +26,8 @@ jobs:
       - name: Aplica as migrações D1 em um SQLite local
         run: |
           mkdir -p migrations
-          touch migrations/.gitkeep
           for f in migrations/*.sql; do
-            if [ -f "$f" ] && [ "$f" != "migrations/.gitkeep" ]; then
+            if [ -f "$f" ]; then
               sqlite3 teste.db < "$f"
             fi
           done
